@@ -1,0 +1,7 @@
+{
+  "name": "Odysseus",
+  "description": "A comprehensive daily companion for mechanical engineering students to manage academics, build projects, and reflect on personal growth, powered by Gemini AI.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
