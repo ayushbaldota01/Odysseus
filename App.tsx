@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, AppState, AcademicTask, Project, JournalEntry, LearningResource, BrainItem, DailyUpload } from './types';
+import { View, AppState, AcademicTask, Project, JournalEntry, BrainItem, DailyUpload, Book } from './types';
 import AcademicsView from './components/AcademicsView';
 import BuilderView from './components/BuilderView';
 import ThoughtBookView from './components/ThoughtBookView';
@@ -27,11 +27,6 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [resources, setResources] = useState<LearningResource[]>(() => {
-    const saved = localStorage.getItem('app_resources');
-    return saved ? JSON.parse(saved) : [];
-  });
-
   const [brainItems, setBrainItems] = useState<BrainItem[]>(() => {
     const saved = localStorage.getItem('app_brain_inbox');
     return saved ? JSON.parse(saved) : [];
@@ -42,39 +37,45 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [books, setBooks] = useState<Book[]>(() => {
+    const saved = localStorage.getItem('app_books');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Persistence Effects
   useEffect(() => localStorage.setItem('app_tasks', JSON.stringify(tasks)), [tasks]);
   useEffect(() => localStorage.setItem('app_projects', JSON.stringify(projects)), [projects]);
   useEffect(() => localStorage.setItem('app_journal', JSON.stringify(journal)), [journal]);
-  useEffect(() => localStorage.setItem('app_resources', JSON.stringify(resources)), [resources]);
   useEffect(() => localStorage.setItem('app_brain_inbox', JSON.stringify(brainItems)), [brainItems]);
   useEffect(() => localStorage.setItem('app_daily_uploads', JSON.stringify(dailyUploads)), [dailyUploads]);
+  useEffect(() => localStorage.setItem('app_books', JSON.stringify(books)), [books]);
 
   // Constructed AppState for the AI Context
   const appState: AppState = {
-    userProfile: { name: 'User', major: 'Mechanical Engineering' },
+    userProfile: { name: 'Ayush', major: 'Mechanical Engineering' },
     tasks,
     projects,
     journal,
-    resources,
+    resources: [],
     brain: {
       inbox: brainItems,
-      dailyUploads
+      dailyUploads,
+      books
     }
   };
 
   const renderView = () => {
     switch (currentView) {
       case View.ACADEMICS:
-        return <AcademicsView tasks={tasks} setTasks={setTasks} resources={resources} setResources={setResources} />;
+        return <AcademicsView tasks={tasks} setTasks={setTasks} />;
       case View.BUILDER:
         return <BuilderView projects={projects} setProjects={setProjects} />;
       case View.THOUGHTS:
         return <ThoughtBookView journal={journal} setJournal={setJournal} />;
       case View.BRAIN:
-        return <KnowledgeHub brainItems={brainItems} setBrainItems={setBrainItems} dailyUploads={dailyUploads} setDailyUploads={setDailyUploads} />;
+        return <KnowledgeHub brainItems={brainItems} setBrainItems={setBrainItems} dailyUploads={dailyUploads} setDailyUploads={setDailyUploads} books={books} setBooks={setBooks} />;
       default:
-        return <AcademicsView tasks={tasks} setTasks={setTasks} resources={resources} setResources={setResources} />;
+        return <AcademicsView tasks={tasks} setTasks={setTasks} />;
     }
   };
 

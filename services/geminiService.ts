@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AppState, Flashcard, EmailAnalysisResult, BrainItem, DailyUpload, BrainCategory } from '../types';
+import { AppState, Flashcard, EmailAnalysisResult, BrainItem, DailyUpload, BrainCategory, Book } from '../types';
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -370,20 +370,29 @@ export const analyzeInboxForAcademics = async (emailText: string): Promise<Email
 
 // --- Second Brain / Knowledge Hub ---
 
-export const processBrainDump = async (text: string): Promise<Array<{ category: BrainCategory, title: string, summary: string, url?: string }>> => {
+export const processBrainDump = async (text: string): Promise<Array<{ category: BrainCategory, title: string, summary: string, keyInsights: string[], url?: string }>> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `${AYUSH_PERSONA}
       
-      Task: Analyze this raw input for the Open Box of Thoughts (Second Brain).
-      It may contain a single item or multiple items (a list of links, books, or ideas).
+      Task: Analyze this raw input for the Second Brain knowledge system.
+      It may contain a single item or multiple items (links, podcasts, reels, articles, ideas).
       
       For EACH distinct item found in the input:
-      1. Categorize it: READ (book/article/newsletter), WATCH (video/channel), TOOL (software/ai/app), CONCEPT (idea/fact), OTHER.
+      1. Categorize it:
+         - BOOK: Book titles, Goodreads links, reading lists
+         - PODCAST: Spotify, Apple Podcasts, podcast episodes
+         - VIDEO: YouTube, Instagram Reels, TikTok, video content
+         - ARTICLE: Blog posts, news articles, newsletters
+         - THREAD: Twitter/X threads, Reddit posts
+         - TOOL: Software, apps, AI tools, websites
+         - CONCEPT: Ideas, facts, quotes, mental models
+         - OTHER: Anything else
       2. Extract a clean Title.
-      3. Write a 1-sentence summary of what it is.
-      4. If there is a URL, extract it.
+      3. Write a 2-3 sentence summary explaining what it is and why it's valuable.
+      4. Extract 3-5 key insights or takeaways as bullet points.
+      5. If there is a URL, extract it.
       
       Input: "${text}"`,
       config: {
@@ -393,9 +402,10 @@ export const processBrainDump = async (text: string): Promise<Array<{ category: 
           items: {
             type: Type.OBJECT,
             properties: {
-              category: { type: Type.STRING, enum: ['READ', 'WATCH', 'TOOL', 'CONCEPT', 'OTHER'] },
+              category: { type: Type.STRING, enum: ['BOOK', 'PODCAST', 'VIDEO', 'ARTICLE', 'THREAD', 'TOOL', 'CONCEPT', 'OTHER'] },
               title: { type: Type.STRING },
               summary: { type: Type.STRING },
+              keyInsights: { type: Type.ARRAY, items: { type: Type.STRING } },
               url: { type: Type.STRING, nullable: true }
             }
           }
@@ -407,7 +417,219 @@ export const processBrainDump = async (text: string): Promise<Array<{ category: 
     return Array.isArray(result) ? result : [result];
   } catch (error) {
     // Fallback for error or if model returns a single object despite schema
-    return [{ category: 'OTHER', title: 'New Entry', summary: text, url: undefined }];
+    return [{ category: 'OTHER', title: 'New Entry', summary: text, keyInsights: [], url: undefined }];
+  }
+};
+
+// --- Bookshelf ---
+
+export const generateBookSummary = async (title: string, author: string): Promise<string> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Task: Create an immersive, condensed reading experience for "${title}" by ${author}.
+
+Write this as if the reader is ACTUALLY READING an abridged version of the book. Make them FEEL like they're experiencing the book, not just reading a summary.
+
+Format in Markdown:
+
+# ${title}
+*by ${author}*
+
+---
+
+## 🎬 The Opening
+(Write 2-3 paragraphs that capture how the book begins. Set the scene. What's the hook? What problem or story does it introduce? Make it engaging like an actual book opening.)
+
+---
+
+## 📖 Part I: [Title of First Major Section/Theme]
+
+### Chapter 1: [Chapter Title if known, or thematic title]
+(Write 2-3 paragraphs summarizing this chapter's content in a narrative, engaging style. Include specific examples, stories, or arguments the author makes. Make it feel like reading the actual chapter condensed.)
+
+### Chapter 2: [Chapter Title]
+(Same approach - narrative, engaging, specific)
+
+(Continue for major chapters/sections...)
+
+---
+
+## 📖 Part II: [Title of Second Major Section/Theme]
+(Continue the chapter-by-chapter breakdown...)
+
+---
+
+## 📖 Part III: [If applicable]
+(Continue...)
+
+---
+
+## 🎯 The Core Message
+(2-3 paragraphs distilling the book's central thesis and why it matters)
+
+---
+
+## 💡 Actionable Takeaways
+1. **[Takeaway 1]**: (How to apply it)
+2. **[Takeaway 2]**: (How to apply it)
+3. **[Takeaway 3]**: (How to apply it)
+4. **[Takeaway 4]**: (How to apply it)
+5. **[Takeaway 5]**: (How to apply it)
+
+---
+
+## 💬 Memorable Quotes
+> "[Quote 1]"
+
+> "[Quote 2]"
+
+> "[Quote 3]"
+
+---
+
+## 🏁 The Closing
+(How does the book end? What's the final message the author leaves with readers?)
+
+---
+
+**Reading Time**: ~X minutes (estimate based on summary length)
+**Best For**: (Who should read this and when)
+
+IMPORTANT: Write in a flowing, narrative style. The reader should feel like they've READ the book, not just skimmed a summary. Include specific stories, examples, and arguments from the book. If you don't know specific details, create a plausible structure based on the book's known themes.`,
+    });
+    return response.text || "Could not generate summary.";
+  } catch (error) {
+    console.error("Book Summary Error:", error);
+    return "Failed to generate book summary. Please try again.";
+  }
+};
+
+// --- Content Deep Dive (Podcasts, Videos, etc.) ---
+
+export const generateContentDeepDive = async (title: string, category: string, url?: string): Promise<string> => {
+  try {
+    const contentType = category.toLowerCase();
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Task: Create an immersive summary for this ${contentType}: "${title}"
+${url ? `URL: ${url}` : ''}
+
+Write this as if the reader is EXPERIENCING the actual ${contentType}. Make them feel like they watched/listened to it.
+
+Format in Markdown:
+
+# ${title}
+*${category}*
+
+---
+
+## 🎬 Opening Hook
+(What's the attention-grabbing start? Set the scene. What question or story does it open with?)
+
+---
+
+${contentType === 'podcast' ? `
+## 🎙️ The Conversation Flow
+
+### Part 1: The Setup (0:00 - ~15 min)
+(What topics are introduced? What's the context? Who's speaking and what's their energy?)
+
+### Part 2: The Deep Dive (~15 - 45 min)  
+(The meat of the conversation. Key stories, insights, debates. Write it like you're listening along.)
+
+### Part 3: The Breakthrough Moments (~45 min - end)
+(The "aha" moments. The best insights. The memorable exchanges.)
+
+---
+
+## 💎 Golden Nuggets
+(The 5-7 best quotes or insights from the conversation)
+
+1. **"[Quote/Insight]"** - Context
+2. **"[Quote/Insight]"** - Context
+...
+
+---
+
+## 🎯 Key Themes Discussed
+- **[Theme 1]**: Brief explanation
+- **[Theme 2]**: Brief explanation
+- **[Theme 3]**: Brief explanation
+
+` : contentType === 'video' ? `
+## 🎥 The Video Journey
+
+### Opening Scene (0:00 - 2:00)
+(How does it start? What visuals? What's said?)
+
+### Main Content (~2:00 - middle)
+(Walk through the key segments. What's shown? What's explained? Include specific examples and demonstrations.)
+
+### The Climax/Key Reveal
+(The main point or most impactful moment)
+
+### Closing (~end)
+(How does it wrap up? What's the call to action?)
+
+---
+
+## 💡 Key Points Covered
+1. **[Point 1]**: Detailed explanation
+2. **[Point 2]**: Detailed explanation
+3. **[Point 3]**: Detailed explanation
+...
+
+---
+
+## 🎯 Visual Highlights
+(Describe any charts, demonstrations, or visual elements that were important)
+
+` : `
+## 📝 Content Breakdown
+
+### Section 1: The Introduction
+(What's the opening hook and context?)
+
+### Section 2: The Core Content
+(Main points, arguments, or story)
+
+### Section 3: The Conclusion
+(How does it end? What's the takeaway?)
+
+---
+
+## 💡 Key Insights
+1. **[Insight 1]**
+2. **[Insight 2]**
+3. **[Insight 3]**
+
+`}
+
+## 🧠 What You'll Remember
+(The 3 things that will stick with you after experiencing this content)
+
+1. 
+2. 
+3. 
+
+---
+
+## ⚡ One-Line Summary
+(If you had to describe this in one sentence to a friend)
+
+---
+
+**For**: (Who would benefit most from this content)
+**Mood**: (What kind of vibe/energy does this content have)
+
+IMPORTANT: Write engagingly. The reader should feel like they experienced the content, not just read about it.`,
+    });
+    return response.text || "Could not generate deep dive.";
+  } catch (error) {
+    console.error("Content Deep Dive Error:", error);
+    return "Failed to generate content summary. Please try again.";
   }
 };
 
