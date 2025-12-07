@@ -23,8 +23,11 @@ const getApiKey = (): string => {
 const apiKey = getApiKey();
 const genAI = new GoogleGenerativeAI(apiKey);
 
+// Use a specific version to avoid resolution errors
+const MODEL_NAME = "gemini-1.5-flash-001";
+
 // Helper to get model - Centralized configuration
-const getModel = (modelName: string = "gemini-1.5-flash") => {
+const getModel = (modelName: string = MODEL_NAME) => {
   return genAI.getGenerativeModel({ model: modelName });
 };
 
@@ -195,51 +198,37 @@ export const chatWithCofounder = async (
   try {
     if (!apiKey) {
       console.warn("Attempted to chat without API key");
-      return "API Key missing. Please check your .env file and ensure VITE_API_KEY is set.";
+
+      const chat = model.startChat({
+        history: history.map(h => ({
+          role: h.role,
+          parts: h.parts
+        }))
+      });
+
+      const result = await chat.sendMessage(message);
+      const response = await result.response;
+      return response.text() || "I'm having trouble thinking right now.";
+    } catch (error: any) {
+      console.error("Cofounder Chat Error:", error);
+
+      if (error.toString().includes("API key")) {
+        return "Invalid API Key detected. Please verify your credentials.";
+      }
+
+      return `Connection error: ${error.message || 'Unknown error'}. Please try again.`;
     }
-
-    const systemInstruction = getDynamicPersona(projectContext, mode);
-
-    // Using gemini-1.5-flash which supports system instructions nicely
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: systemInstruction
-    });
-
-    // Valid role mapping for standard SDK might theoretically differ, but 'user'/'model' is standard
-    // However, the startChat history requires precise format.
-    // parts: [{text: ...}] is correct for @google/generative-ai
-
-    const chat = model.startChat({
-      history: history.map(h => ({
-        role: h.role,
-        parts: h.parts
-      }))
-    });
-
-    const result = await chat.sendMessage(message);
-    const response = await result.response;
-    return response.text() || "I'm having trouble thinking right now.";
-  } catch (error: any) {
-    console.error("Cofounder Chat Error:", error);
-
-    if (error.toString().includes("API key")) {
-      return "Invalid API Key detected. Please verify your credentials.";
-    }
-
-    return `Connection error: ${error.message || 'Unknown error'}. Please try again.`;
-  }
-};
+  };
 
 
-export const summarizeLearningMaterial = async (text: string): Promise<{ summary: string, keyConcepts: string[] }> => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
+  export const summarizeLearningMaterial = async (text: string): Promise<{ summary: string, keyConcepts: string[] }> => {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
 
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Task: Distill this engineering material.
       1. "Briefing": Max 3 sentences. High signal-to-noise ratio.
@@ -247,49 +236,49 @@ export const summarizeLearningMaterial = async (text: string): Promise<{ summary
       
       Text: "${text.substring(0, 10000)}"`);
 
-    const jsonText = result.response.text();
-    const cleanJson = jsonText.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleanJson || "{}");
+      const jsonText = result.response.text();
+      const cleanJson = jsonText.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanJson || "{}");
 
-    return {
-      summary: parsed.summary || "Summary unavailable.",
-      keyConcepts: parsed.keyConcepts || []
-    };
-  } catch (error) {
-    console.error(error);
-    return { summary: "Could not summarize.", keyConcepts: [] };
-  }
-};
+      return {
+        summary: parsed.summary || "Summary unavailable.",
+        keyConcepts: parsed.keyConcepts || []
+      };
+    } catch (error) {
+      console.error(error);
+      return { summary: "Could not summarize.", keyConcepts: [] };
+    }
+  };
 
-// --- Interactive Project Ideation Wizard ---
+  // --- Interactive Project Ideation Wizard ---
 
-export const generateScopingQuestions = async (initialIdea: string): Promise<string[]> => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
+  export const generateScopingQuestions = async (initialIdea: string): Promise<string[]> => {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
 
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       He has a project idea: "${initialIdea}".
       Task: Ask 3 critical, clarifying technical questions to determine if this is viable or if he's missing the point.
       Return JSON array of strings.`);
 
-    const jsonText = result.response.text();
-    const cleanJson = jsonText.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleanJson || "[]");
-  } catch (error) {
-    return ["What are the physics constraints?", "What is the MVP timeline?", "Where is the failure point?"];
-  }
-};
+      const jsonText = result.response.text();
+      const cleanJson = jsonText.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleanJson || "[]");
+    } catch (error) {
+      return ["What are the physics constraints?", "What is the MVP timeline?", "Where is the failure point?"];
+    }
+  };
 
-export const generateComprehensiveRoadmap = async (idea: string, qaHistory: { question: string, answer: string }[]): Promise<string> => {
-  try {
-    const qaContext = qaHistory.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n');
-    const model = getModel();
+  export const generateComprehensiveRoadmap = async (idea: string, qaHistory: { question: string, answer: string }[]): Promise<string> => {
+    try {
+      const qaContext = qaHistory.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n');
+      const model = getModel();
 
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Role: Master Builder.
       Task: Create a "Zero to Hero" execution roadmap.
@@ -308,18 +297,18 @@ export const generateComprehensiveRoadmap = async (idea: string, qaHistory: { qu
       
       Tone: Technical, precise, inspiring.`);
 
-    return result.response.text() || "Roadmap generation failed.";
-  } catch (error) {
-    return "Planning process failed.";
-  }
-};
+      return result.response.text() || "Roadmap generation failed.";
+    } catch (error) {
+      return "Planning process failed.";
+    }
+  };
 
-// --- Study Tools & Mail ---
+  // --- Study Tools & Mail ---
 
-export const generateStudyGuide = async (content: string): Promise<string> => {
-  try {
-    const model = getModel();
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+  export const generateStudyGuide = async (content: string): Promise<string> => {
+    try {
+      const model = getModel();
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Role: Exam Prep Strategist.
       Task: Convert this raw material into a high-velocity Cheat Sheet / Study Guide.
@@ -328,47 +317,47 @@ export const generateStudyGuide = async (content: string): Promise<string> => {
       
       Content: ${content.substring(0, 15000)}`);
 
-    return result.response.text() || "Study guide generation failed.";
-  } catch (error) {
-    return "Could not generate study guide.";
-  }
-};
+      return result.response.text() || "Study guide generation failed.";
+    } catch (error) {
+      return "Could not generate study guide.";
+    }
+  };
 
-export const generateFlashcards = async (content: string): Promise<Flashcard[]> => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
+  export const generateFlashcards = async (content: string): Promise<Flashcard[]> => {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
 
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Task: Create 5-8 active recall flashcards from this material.
       Focus: Hard technical concepts, not fluff.
       
       Content: ${content.substring(0, 10000)}`);
 
-    const jsonText = result.response.text();
-    const cleanJson = jsonText.replace(/```json|```/g, '').trim();
-    const cards = JSON.parse(cleanJson || "[]");
-    return cards.map((c: any, i: number) => ({
-      id: Date.now().toString() + i,
-      front: c.front,
-      back: c.back
-    }));
-  } catch (error) {
-    return [];
-  }
-};
+      const jsonText = result.response.text();
+      const cleanJson = jsonText.replace(/```json|```/g, '').trim();
+      const cards = JSON.parse(cleanJson || "[]");
+      return cards.map((c: any, i: number) => ({
+        id: Date.now().toString() + i,
+        front: c.front,
+        back: c.back
+      }));
+    } catch (error) {
+      return [];
+    }
+  };
 
-export const analyzeInboxForAcademics = async (emailText: string): Promise<EmailAnalysisResult> => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
+  export const analyzeInboxForAcademics = async (emailText: string): Promise<EmailAnalysisResult> => {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
 
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Task: Scan this raw email dump from ayush.baldota24@vit.edu.
       Goal: Extract exams, assignments, and critical academic announcements.
@@ -377,25 +366,25 @@ export const analyzeInboxForAcademics = async (emailText: string): Promise<Email
       Emails:
       ${emailText.substring(0, 20000)}`);
 
-    const jsonText = result.response.text();
-    const cleanJson = jsonText.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleanJson || '{"importantEmails": []}');
-  } catch (error) {
-    console.error(error);
-    return { importantEmails: [] };
-  }
-};
+      const jsonText = result.response.text();
+      const cleanJson = jsonText.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleanJson || '{"importantEmails": []}');
+    } catch (error) {
+      console.error(error);
+      return { importantEmails: [] };
+    }
+  };
 
-// --- Second Brain / Knowledge Hub ---
+  // --- Second Brain / Knowledge Hub ---
 
-export const processBrainDump = async (text: string): Promise<Array<{ category: BrainCategory, title: string, summary: string, keyInsights: string[], url?: string }>> => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
+  export const processBrainDump = async (text: string): Promise<Array<{ category: BrainCategory, title: string, summary: string, keyInsights: string[], url?: string }>> => {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
 
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Task: Analyze this raw input for the Second Brain knowledge system.
       It may contain a single item or multiple items (links, podcasts, reels, articles, ideas).
@@ -417,21 +406,21 @@ export const processBrainDump = async (text: string): Promise<Array<{ category: 
       
       Input: "${text}"`);
 
-    const jsonText = result.response.text();
-    const cleanJson = jsonText.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleanJson || '[]');
-    return Array.isArray(parsed) ? parsed : [parsed];
-  } catch (error) {
-    return [{ category: 'OTHER', title: 'New Entry', summary: text, keyInsights: [], url: undefined }];
-  }
-};
+      const jsonText = result.response.text();
+      const cleanJson = jsonText.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanJson || '[]');
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (error) {
+      return [{ category: 'OTHER', title: 'New Entry', summary: text, keyInsights: [], url: undefined }];
+    }
+  };
 
-// --- Bookshelf ---
+  // --- Bookshelf ---
 
-export const generateBookSummary = async (title: string, author: string): Promise<string> => {
-  try {
-    const model = getModel();
-    const result = await model.generateContent(`Task: Create an immersive, condensed reading experience for "${title}" by ${author}.
+  export const generateBookSummary = async (title: string, author: string): Promise<string> => {
+    try {
+      const model = getModel();
+      const result = await model.generateContent(`Task: Create an immersive, condensed reading experience for "${title}" by ${author}.
 
 Write this as if the reader is ACTUALLY READING an abridged version of the book. Make them FEEL like they're experiencing the book, not just reading a summary.
 
@@ -458,43 +447,43 @@ Format in Markdown:
 
 IMPORTANT: Write in a flowing, narrative style.`);
 
-    return result.response.text() || "Could not generate summary.";
-  } catch (error) {
-    console.error("Book Summary Error:", error);
-    return "Failed to generate book summary. Please try again.";
-  }
-};
+      return result.response.text() || "Could not generate summary.";
+    } catch (error) {
+      console.error("Book Summary Error:", error);
+      return "Failed to generate book summary. Please try again.";
+    }
+  };
 
-// --- Content Deep Dive (Podcasts, Videos, etc.) ---
+  // --- Content Deep Dive (Podcasts, Videos, etc.) ---
 
-export const generateContentDeepDive = async (title: string, category: string, url?: string): Promise<string> => {
-  try {
-    const model = getModel();
-    const contentType = category.toLowerCase();
+  export const generateContentDeepDive = async (title: string, category: string, url?: string): Promise<string> => {
+    try {
+      const model = getModel();
+      const contentType = category.toLowerCase();
 
-    const result = await model.generateContent(`Task: Create an immersive summary for this ${contentType}: "${title}"
+      const result = await model.generateContent(`Task: Create an immersive summary for this ${contentType}: "${title}"
 ${url ? `URL: ${url}` : ''}
 
 Write this as if the reader is EXPERIENCING the actual ${contentType}. Make them feel like they watched/listened to it.`);
 
-    return result.response.text() || "Could not generate deep dive.";
-  } catch (error) {
-    console.error("Content Deep Dive Error:", error);
-    return "Failed to generate content summary. Please try again.";
-  }
-};
+      return result.response.text() || "Could not generate deep dive.";
+    } catch (error) {
+      console.error("Content Deep Dive Error:", error);
+      return "Failed to generate content summary. Please try again.";
+    }
+  };
 
-export const generateDailyProtocol = async (
-  alreadyLearned: string[],
-  preferences: string = "AI, Tech, Philosophy, Automotive, Finance, Engineering, Science, Space Tech"
-): Promise<Omit<DailyUpload, 'id' | 'date' | 'completed'>> => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
+  export const generateDailyProtocol = async (
+    alreadyLearned: string[],
+    preferences: string = "AI, Tech, Philosophy, Automotive, Finance, Engineering, Science, Space Tech"
+  ): Promise<Omit<DailyUpload, 'id' | 'date' | 'completed'>> => {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
 
-    const result = await model.generateContent(`${AYUSH_PERSONA}
+      const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Role: Knowledge Architect.
       Task: Generate TODAY'S "Daily Upgrade" protocol.
@@ -508,10 +497,10 @@ export const generateDailyProtocol = async (
       
       Avoid these recent topics: ${alreadyLearned.join(', ')}.`);
 
-    const jsonText = result.response.text();
-    const cleanJson = jsonText.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleanJson || '{}');
-  } catch (error) {
-    return { niche: 'General', topic: 'System Error', content: 'Could not retrieve daily download.', actionableResource: 'Retry' };
-  }
-};
+      const jsonText = result.response.text();
+      const cleanJson = jsonText.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleanJson || '{}');
+    } catch (error) {
+      return { niche: 'General', topic: 'System Error', content: 'Could not retrieve daily download.', actionableResource: 'Retry' };
+    }
+  };
