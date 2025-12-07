@@ -24,7 +24,7 @@ const apiKey = getApiKey();
 const genAI = new GoogleGenerativeAI(apiKey);
 
 // Use a specific version to avoid resolution errors
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-pro";
 
 // Helper to get model - Centralized configuration
 const getModel = (modelName: string = MODEL_NAME) => {
