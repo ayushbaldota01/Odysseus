@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, Flashcard, EmailAnalysisResult, BrainItem, DailyUpload, BrainCategory, Book } from '../types';
 
@@ -165,9 +164,83 @@ export const critiqueProjectFeasibility = async (projectContext: string): Promis
   }
 };
 
-// --- NotebookLM-style Learning Features ---
 
-export const summarizeLearningMaterial = async (text: string): Promise<{summary: string, keyConcepts: string[]}> => {
+// --- AI Cofounder & Builder Features ---
+
+const getDynamicPersona = (projectDescription: string, mode: 'CHAT' | 'PLAN' | 'RESEARCH'): string => {
+  const basePersona = `
+    ROLE: You are the AI Co-Founder and Chief Technology Officer for the user's project.
+    
+    THE USER'S STYLE:
+    - The user wants freedom. Do not be prescriptivist unless asked.
+    - Adapt to their personality. If they are brief, be brief. If they are detailed, be detailed.
+    - Your goal is to be the "Top 1% Expert" in the specific niche of the project.
+    
+    PROJECT CONTEXT: "${projectDescription}"
+    
+    YOUR EXPERTISE:
+    - You must instantly adopt the persona of the world's leading expert in this specific field (e.g., if it's a drone, you are a master aeronautical engineer; if it's a crypto app, you are a master solidity dev and economist).
+    - You have deep technical knowledge, business acumen, and strategic foresight in this niche.
+  `;
+
+  if (mode === 'PLAN') {
+    return `${basePersona}
+      CURRENT MODE: PLANNING
+      - Focus on execution roadmaps, architectural decisions, and listing steps.
+      - Help the user structure their thoughts into actionable plans.
+      - Output should be structured (bullet points, checklists) when appropriate.
+    `;
+  }
+
+  if (mode === 'RESEARCH') {
+    return `${basePersona}
+      CURRENT MODE: RESEARCH
+      - Focus on feasibility, market analysis, competitor analysis, and technical validation.
+      - Be critical but constructive. Spot bottlenecks and "gotchas" early.
+      - Provide data-backed insights where possible.
+    `;
+  }
+
+  // mode === 'CHAT' (General)
+  return `${basePersona}
+    CURRENT MODE: GENERAL DISCUSSION
+    - Brainstorm, discuss ideas, and follow the user's lead.
+    - Be a sounding board. Ask insightful questions only when it helps clarify the vision, but don't interrogate.
+  `;
+};
+
+export const chatWithCofounder = async (
+  message: string,
+  history: { role: 'user' | 'model', parts: [{ text: string }] }[],
+  projectContext: string,
+  mode: 'CHAT' | 'PLAN' | 'RESEARCH'
+): Promise<string> => {
+  try {
+    const systemInstruction = getDynamicPersona(projectContext, mode);
+
+    // Construct conversation history with the new message
+    const contents = [
+      ...history,
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-1.5-flash',
+      config: {
+        systemInstruction: { parts: [{ text: systemInstruction }] }
+      },
+      contents: contents
+    });
+
+    return response.text || "I'm having trouble thinking right now.";
+  } catch (error) {
+    console.error("Cofounder Chat Error:", error);
+    return "Connection error. Please try again.";
+  }
+};
+
+
+export const summarizeLearningMaterial = async (text: string): Promise<{ summary: string, keyConcepts: string[] }> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -177,23 +250,23 @@ export const summarizeLearningMaterial = async (text: string): Promise<{summary:
       1. "Briefing": Max 3 sentences. High signal-to-noise ratio.
       2. "Key Concepts": Extract 3-5 core technical keywords (JSON).
       
-      Text: "${text.substring(0, 10000)}"`, 
+      Text: "${text.substring(0, 10000)}"`,
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-                summary: { type: Type.STRING },
-                keyConcepts: { type: Type.ARRAY, items: { type: Type.STRING } }
-            }
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING },
+            keyConcepts: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
         }
       }
     });
-    
+
     const result = JSON.parse(response.text || "{}");
     return {
-        summary: result.summary || "Summary unavailable.",
-        keyConcepts: result.keyConcepts || []
+      summary: result.summary || "Summary unavailable.",
+      keyConcepts: result.keyConcepts || []
     };
   } catch (error) {
     console.error(error);
@@ -215,8 +288,8 @@ export const generateScopingQuestions = async (initialIdea: string): Promise<str
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
+          type: Type.ARRAY,
+          items: { type: Type.STRING }
         }
       }
     });
@@ -227,10 +300,10 @@ export const generateScopingQuestions = async (initialIdea: string): Promise<str
   }
 };
 
-export const generateComprehensiveRoadmap = async (idea: string, qaHistory: {question: string, answer: string}[]): Promise<string> => {
+export const generateComprehensiveRoadmap = async (idea: string, qaHistory: { question: string, answer: string }[]): Promise<string> => {
   try {
     const qaContext = qaHistory.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n');
-    
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `${AYUSH_PERSONA}
@@ -306,7 +379,7 @@ export const generateFlashcards = async (content: string): Promise<Flashcard[]> 
         }
       }
     });
-    
+
     const cards = JSON.parse(response.text || "[]");
     return cards.map((c: any, i: number) => ({
       id: Date.now().toString() + i,
@@ -510,7 +583,7 @@ IMPORTANT: Write in a flowing, narrative style. The reader should feel like they
 export const generateContentDeepDive = async (title: string, category: string, url?: string): Promise<string> => {
   try {
     const contentType = category.toLowerCase();
-    
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Task: Create an immersive summary for this ${contentType}: "${title}"
@@ -634,7 +707,7 @@ IMPORTANT: Write engagingly. The reader should feel like they experienced the co
 };
 
 export const generateDailyProtocol = async (
-  alreadyLearned: string[], 
+  alreadyLearned: string[],
   preferences: string = "AI, Tech, Philosophy, Automotive, Finance, Engineering, Science, Space Tech"
 ): Promise<Omit<DailyUpload, 'id' | 'date' | 'completed'>> => {
   try {
