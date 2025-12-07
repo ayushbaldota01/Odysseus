@@ -85,9 +85,7 @@ export const generateSimpleHelp = async (prompt: string, context?: string): Prom
     return "System glitch. Try again.";
   }
 };
-return "Analysis unavailable.";
-  }
-};
+
 
 export const generateProjectIdeas = async (projectContext: string): Promise<string> => {
   try {
