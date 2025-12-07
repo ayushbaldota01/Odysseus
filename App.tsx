@@ -83,7 +83,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-slate-950 overflow-hidden font-sans text-slate-200 selection:bg-cyan-500/30">
-      <GeminiDebugger />
       {/* Sidebar Navigation */}
       <nav className="w-20 md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between flex-shrink-0 transition-all duration-300">
         <div>
