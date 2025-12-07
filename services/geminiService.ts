@@ -1,20 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { AppState, Flashcard, EmailAnalysisResult, BrainItem, DailyUpload, BrainCategory, Book } from '../types';
-
-// Robust API Key Retrieval
-const getApiKey = (): string => {
-  const key = (import.meta.env?.VITE_API_KEY as string) ||
-    (import.meta.env?.VITE_GEMINI_API_KEY as string) ||
-    '';
-  if (!key) {
-    console.error("CRITICAL: Gemini API Key is missing. Checked VITE_API_KEY and VITE_GEMINI_API_KEY.");
-  }
-  return key;
-};
-
-const apiKey = getApiKey();
-const genAI = new GoogleGenerativeAI(apiKey);
-
 // Helper to get model - Centralized configuration
 const getModel = (modelName: string = "gemini-1.5-flash") => {
   return genAI.getGenerativeModel({ model: modelName });
@@ -75,32 +58,6 @@ export const generateSimpleHelp = async (prompt: string, context?: string): Prom
   } catch (error) {
     console.error("Gemini Flash Error:", error);
     return "System glitch. Try again.";
-  }
-};
-
-export const generateDeepReflection = async (prompt: string, state: AppState): Promise<string> => {
-  try {
-    const contextData = getContextPrompt(state);
-    const model = getModel();
-    const result = await model.generateContent(`${AYUSH_PERSONA}
-      
-      You are his Digital Reflection and Second Brain.
-      ${contextData}
-      
-      He is asking for advice, brainstorming, or reflection.
-      Think deeply about his trajectory as a world-class builder.
-      
-      User Query: ${prompt}`);
-    return result.response.text() || "Thinking process stalled.";
-  } catch (error) {
-    console.error("Gemini Pro Thinking Error:", error);
-    return "Thinking interrupted. Retry.";
-  }
-};
-
-export const analyzeJournal = async (entry: string): Promise<string> => {
-  try {
-    const model = getModel();
     const result = await model.generateContent(`${AYUSH_PERSONA}
       
       Analyze this thought log.
