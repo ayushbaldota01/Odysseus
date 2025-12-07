@@ -1,7 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, Flashcard, EmailAnalysisResult, BrainItem, DailyUpload, BrainCategory, Book } from '../types';
 
-const apiKey = ((import.meta as any).env?.VITE_API_KEY as string) || (typeof process !== 'undefined' ? process.env?.API_KEY : '') || '';
+const apiKey = (import.meta.env?.VITE_API_KEY as string) ||
+  (import.meta.env?.VITE_GEMINI_API_KEY as string) ||
+  (typeof process !== 'undefined' ? process.env?.API_KEY : '') ||
+  (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '') ||
+  '';
 const ai = new GoogleGenAI({ apiKey });
 
 const AYUSH_PERSONA = `
@@ -236,7 +240,7 @@ export const chatWithCofounder = async (
   } catch (error) {
     console.error("Cofounder Chat Error:", error);
     if (!apiKey) {
-      return "API Key missing. Please set VITE_API_KEY in .env file.";
+      return "API Key missing. Please set VITE_API_KEY or GEMINI_API_KEY in your .env file.";
     }
     return "Connection error. Please try again.";
   }
