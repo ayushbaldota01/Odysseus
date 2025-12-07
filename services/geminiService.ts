@@ -1,3 +1,28 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { AppState, Flashcard, EmailAnalysisResult, BrainItem, DailyUpload, BrainCategory, Book } from '../types';
+
+// Robust API Key Retrieval
+const getApiKey = (): string => {
+  // 1. Check Standard Vite Env
+  if ((import.meta as any).env?.VITE_API_KEY) return (import.meta as any).env.VITE_API_KEY;
+
+  // 2. Check Custom Prefix (enabled via vite.config.ts envPrefix)
+  if ((import.meta as any).env?.GEMINI_API_KEY) return (import.meta as any).env.GEMINI_API_KEY;
+
+  // 3. Check process.env (polyfilled by vite.config.ts define)
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY;
+    if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+    if (process.env.API_KEY) return process.env.API_KEY;
+  }
+
+  console.error("CRITICAL: Gemini API Key is missing. Checked VITE_API_KEY and GEMINI_API_KEY in import.meta.env and process.env");
+  return '';
+};
+
+const apiKey = getApiKey();
+const genAI = new GoogleGenerativeAI(apiKey);
+
 // Helper to get model - Centralized configuration
 const getModel = (modelName: string = "gemini-1.5-flash") => {
   return genAI.getGenerativeModel({ model: modelName });
@@ -58,16 +83,9 @@ export const generateSimpleHelp = async (prompt: string, context?: string): Prom
   } catch (error) {
     console.error("Gemini Flash Error:", error);
     return "System glitch. Try again.";
-    const result = await model.generateContent(`${AYUSH_PERSONA}
-      
-      Analyze this thought log.
-      If he is complaining, challenge him. If he is winning, push for the next level. 
-      Keep it to 1-2 sentences. Sharp and direct.
-      
-      Entry: "${entry}"`);
-    return result.response.text() || "Reflecting...";
-  } catch (error) {
-    return "Analysis unavailable.";
+  }
+};
+return "Analysis unavailable.";
   }
 };
 
