@@ -7,6 +7,8 @@ import ThoughtBookView from './components/ThoughtBookView';
 import KnowledgeHub from './components/KnowledgeHub';
 import FriendChat from './components/FriendChat';
 
+import { GeminiDebugger } from './components/GeminiDebugger';
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.ACADEMICS);
   const [showChat, setShowChat] = useState(false);
@@ -81,40 +83,41 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-slate-950 overflow-hidden font-sans text-slate-200 selection:bg-cyan-500/30">
+      <GeminiDebugger />
       {/* Sidebar Navigation */}
       <nav className="w-20 md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between flex-shrink-0 transition-all duration-300">
         <div>
           <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-             <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/20">
-               O
-             </div>
-             <span className="font-bold tracking-wider hidden md:block text-slate-100">ODYSSEUS</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/20">
+              O
+            </div>
+            <span className="font-bold tracking-wider hidden md:block text-slate-100">ODYSSEUS</span>
           </div>
-          
+
           <div className="p-4 space-y-2">
-            <NavButton 
-              active={currentView === View.ACADEMICS} 
+            <NavButton
+              active={currentView === View.ACADEMICS}
               onClick={() => setCurrentView(View.ACADEMICS)}
               icon="school"
               label="ACADEMICS"
               colorClass="text-cyan-400"
             />
-            <NavButton 
-              active={currentView === View.BUILDER} 
+            <NavButton
+              active={currentView === View.BUILDER}
               onClick={() => setCurrentView(View.BUILDER)}
               icon="construction"
               label="BUILDER"
               colorClass="text-orange-400"
             />
-             <NavButton 
-              active={currentView === View.BRAIN} 
+            <NavButton
+              active={currentView === View.BRAIN}
               onClick={() => setCurrentView(View.BRAIN)}
               icon="psychology"
               label="SECOND_BRAIN"
               colorClass="text-emerald-400"
             />
-            <NavButton 
-              active={currentView === View.THOUGHTS} 
+            <NavButton
+              active={currentView === View.THOUGHTS}
               onClick={() => setCurrentView(View.THOUGHTS)}
               icon="auto_stories"
               label="THOUGHT_BOOK"
@@ -125,12 +128,12 @@ const App: React.FC = () => {
 
         <div className="p-4 border-t border-slate-800">
           <div className="bg-slate-800 rounded p-3 hidden md:block">
-             <p className="text-xs text-slate-500 font-mono uppercase mb-1">Upcoming Deadline</p>
-             {tasks.filter(t => !t.completed)[0] ? (
-               <p className="text-sm font-bold text-slate-200 truncate">{tasks.filter(t => !t.completed)[0].title}</p>
-             ) : (
-               <p className="text-sm text-slate-400">All Clear</p>
-             )}
+            <p className="text-xs text-slate-500 font-mono uppercase mb-1">Upcoming Deadline</p>
+            {tasks.filter(t => !t.completed)[0] ? (
+              <p className="text-sm font-bold text-slate-200 truncate">{tasks.filter(t => !t.completed)[0].title}</p>
+            ) : (
+              <p className="text-sm text-slate-400">All Clear</p>
+            )}
           </div>
         </div>
       </nav>
@@ -142,7 +145,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Global Chat Toggle (Floating Action Button style on mobile, toggle on desktop) */}
-        <button 
+        <button
           onClick={() => setShowChat(!showChat)}
           className={`fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 ${showChat ? 'bg-slate-700 text-slate-300' : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'}`}
         >
@@ -151,9 +154,9 @@ const App: React.FC = () => {
 
         {/* Slide-out Chat Panel */}
         <div className={`fixed top-0 right-0 h-full w-full md:w-[400px] bg-slate-900 border-l border-slate-800 shadow-2xl transform transition-transform duration-300 z-40 ${showChat ? 'translate-x-0' : 'translate-x-full'}`}>
-           <div className="h-full p-4 pt-20 md:pt-4">
-             <FriendChat appState={appState} />
-           </div>
+          <div className="h-full p-4 pt-20 md:pt-4">
+            <FriendChat appState={appState} />
+          </div>
         </div>
       </main>
     </div>
