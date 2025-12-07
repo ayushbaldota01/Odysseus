@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, Flashcard, EmailAnalysisResult, BrainItem, DailyUpload, BrainCategory, Book } from '../types';
 
-const apiKey = process.env.API_KEY || '';
+const apiKey = ((import.meta as any).env?.VITE_API_KEY as string) || (typeof process !== 'undefined' ? process.env?.API_KEY : '') || '';
 const ai = new GoogleGenAI({ apiKey });
 
 const AYUSH_PERSONA = `
@@ -48,7 +48,7 @@ const getContextPrompt = (state: AppState): string => {
 export const generateSimpleHelp = async (prompt: string, context?: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Role: Academic Strategist. 
@@ -68,7 +68,7 @@ export const generateDeepReflection = async (prompt: string, state: AppState): P
   try {
     const contextData = getContextPrompt(state);
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       You are his Digital Reflection and Second Brain.
@@ -89,7 +89,7 @@ export const generateDeepReflection = async (prompt: string, state: AppState): P
 export const analyzeJournal = async (entry: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Analyze this thought log.
@@ -107,7 +107,7 @@ export const analyzeJournal = async (entry: string): Promise<string> => {
 export const generateProjectIdeas = async (projectContext: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Role: Senior Chief Engineer (Musk/Zuck style).
@@ -126,7 +126,7 @@ export const generateProjectIdeas = async (projectContext: string): Promise<stri
 export const generateProjectPlan = async (projectContext: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Role: Product Manager / Lead Engineer.
@@ -149,7 +149,7 @@ export const generateProjectPlan = async (projectContext: string): Promise<strin
 export const critiqueProjectFeasibility = async (projectContext: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Role: Critical Engineering Audit.
@@ -235,6 +235,9 @@ export const chatWithCofounder = async (
     return response.text || "I'm having trouble thinking right now.";
   } catch (error) {
     console.error("Cofounder Chat Error:", error);
+    if (!apiKey) {
+      return "API Key missing. Please set VITE_API_KEY in .env file.";
+    }
     return "Connection error. Please try again.";
   }
 };
@@ -243,7 +246,7 @@ export const chatWithCofounder = async (
 export const summarizeLearningMaterial = async (text: string): Promise<{ summary: string, keyConcepts: string[] }> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Task: Distill this engineering material.
@@ -279,7 +282,7 @@ export const summarizeLearningMaterial = async (text: string): Promise<{ summary
 export const generateScopingQuestions = async (initialIdea: string): Promise<string[]> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       He has a project idea: "${initialIdea}".
@@ -305,7 +308,7 @@ export const generateComprehensiveRoadmap = async (idea: string, qaHistory: { qu
     const qaContext = qaHistory.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n');
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Role: Master Builder.
@@ -336,7 +339,7 @@ export const generateComprehensiveRoadmap = async (idea: string, qaHistory: { qu
 export const generateStudyGuide = async (content: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Role: Exam Prep Strategist.
@@ -358,7 +361,7 @@ export const generateStudyGuide = async (content: string): Promise<string> => {
 export const generateFlashcards = async (content: string): Promise<Flashcard[]> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Task: Create 5-8 active recall flashcards from this material.
@@ -394,7 +397,7 @@ export const generateFlashcards = async (content: string): Promise<Flashcard[]> 
 export const analyzeInboxForAcademics = async (emailText: string): Promise<EmailAnalysisResult> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Task: Scan this raw email dump from ayush.baldota24@vit.edu.
@@ -446,7 +449,7 @@ export const analyzeInboxForAcademics = async (emailText: string): Promise<Email
 export const processBrainDump = async (text: string): Promise<Array<{ category: BrainCategory, title: string, summary: string, keyInsights: string[], url?: string }>> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Task: Analyze this raw input for the Second Brain knowledge system.
@@ -499,7 +502,7 @@ export const processBrainDump = async (text: string): Promise<Array<{ category: 
 export const generateBookSummary = async (title: string, author: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `Task: Create an immersive, condensed reading experience for "${title}" by ${author}.
 
 Write this as if the reader is ACTUALLY READING an abridged version of the book. Make them FEEL like they're experiencing the book, not just reading a summary.
@@ -585,7 +588,7 @@ export const generateContentDeepDive = async (title: string, category: string, u
     const contentType = category.toLowerCase();
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `Task: Create an immersive summary for this ${contentType}: "${title}"
 ${url ? `URL: ${url}` : ''}
 
@@ -712,7 +715,7 @@ export const generateDailyProtocol = async (
 ): Promise<Omit<DailyUpload, 'id' | 'date' | 'completed'>> => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: `${AYUSH_PERSONA}
       
       Role: Knowledge Architect.
