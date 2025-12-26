@@ -237,22 +237,36 @@ export const chatWithCofounder = async (
       return "API Key missing. Please check your .env file and ensure VITE_API_KEY is set.";
     }
 
+    // gemini-pro (1.0) does not support systemInstruction in getGenerativeModel or strict JSON mode.
+    // We must inject the persona into the chat history manually.
     const systemInstruction = getDynamicPersona(projectContext, mode);
 
-    // Using specific model version
+    // Construct a history that includes the system instruction as the first piece of context if possible,
+    // or just prepend it to the current message if it's a fresh chat.
+    // Ideally, for gemini-pro, we simulate system instruction by having it as a preamble.
+
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      systemInstruction: systemInstruction
+      // No systemInstruction here for gemini-pro compatibility
     });
+
+    const chatHistory = history.map(h => ({
+      role: h.role,
+      parts: h.parts
+    }));
+
+    // If history is empty, this is the start. We can pretend the system instruction was established.
+    // Or we can just include it in the current message context.
+    // Best approach for 1.0: Prepend to first message or ensure the context is strong.
 
     const chat = model.startChat({
-      history: history.map(h => ({
-        role: h.role,
-        parts: h.parts
-      }))
+      history: chatHistory
     });
 
-    const result = await chat.sendMessage(message);
+    // Inject persona into the prompt itself to ensure adherence
+    const refinedMessage = `[SYSTEM INSTRUCTION: ${systemInstruction}]\n\nUSER MESSAGE: ${message}`;
+
+    const result = await chat.sendMessage(refinedMessage);
     const response = await result.response;
     return response.text() || "I'm having trouble thinking right now.";
   } catch (error: any) {
@@ -271,7 +285,7 @@ export const summarizeLearningMaterial = async (text: string): Promise<{ summary
   try {
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" }
+      // generationConfig: { responseMimeType: "application/json" } // Not supported in gemini-pro
     });
 
     const result = await model.generateContent(`${AYUSH_PERSONA}
@@ -302,7 +316,7 @@ export const generateScopingQuestions = async (initialIdea: string): Promise<str
   try {
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" }
+      // generationConfig: { responseMimeType: "application/json" } // Not supported in gemini-pro
     });
 
     const result = await model.generateContent(`${AYUSH_PERSONA}
@@ -373,7 +387,7 @@ export const generateFlashcards = async (content: string): Promise<Flashcard[]> 
   try {
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" }
+      // generationConfig: { responseMimeType: "application/json" } // Not supported in gemini-pro
     });
 
     const result = await model.generateContent(`${AYUSH_PERSONA}
@@ -400,7 +414,7 @@ export const analyzeInboxForAcademics = async (emailText: string): Promise<Email
   try {
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" }
+      // generationConfig: { responseMimeType: "application/json" } // Not supported in gemini-pro
     });
 
     const result = await model.generateContent(`${AYUSH_PERSONA}
@@ -427,7 +441,7 @@ export const processBrainDump = async (text: string): Promise<Array<{ category: 
   try {
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" }
+      // generationConfig: { responseMimeType: "application/json" } // Not supported in gemini-pro
     });
 
     const result = await model.generateContent(`${AYUSH_PERSONA}
@@ -526,7 +540,7 @@ export const generateDailyProtocol = async (
   try {
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" }
+      // generationConfig: { responseMimeType: "application/json" } // Not supported in gemini-pro
     });
 
     const result = await model.generateContent(`${AYUSH_PERSONA}
