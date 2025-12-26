@@ -39,6 +39,7 @@ export interface Project {
   id: string;
   title: string;
   description: string;
+  whiteboard: string; // The "Context Book" / Living Spec
   status: 'IDEA' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD';
   notes: ProjectNote[];
 }
@@ -67,33 +68,17 @@ export interface ChatMessage {
 
 // --- Second Brain / Knowledge Hub Types ---
 
-export type BrainCategory = 'BOOK' | 'PODCAST' | 'VIDEO' | 'ARTICLE' | 'THREAD' | 'TOOL' | 'CONCEPT' | 'OTHER';
+export type BrainCategory = 'READ' | 'WATCH' | 'TOOL' | 'CONCEPT' | 'OTHER';
 
 export interface BrainItem {
   id: string;
   originalText: string;
   title: string;
   summary: string;
-  keyInsights?: string[];
   category: BrainCategory;
-  sourceType?: 'LINK' | 'TEXT' | 'DROPPED';
   url?: string;
   addedAt: string;
   status: 'NEW' | 'CONSUMED';
-}
-
-// --- Bookshelf Types ---
-
-export type BookStatus = 'WANT_TO_READ' | 'READING' | 'COMPLETED';
-
-export interface Book {
-  id: string;
-  title: string;
-  author: string;
-  addedAt: string;
-  status: BookStatus;
-  aiSummary?: string;
-  isAnalyzing: boolean;
 }
 
 export interface DailyUpload {
@@ -118,7 +103,6 @@ export interface AppState {
   brain: {
     inbox: BrainItem[];
     dailyUploads: DailyUpload[];
-    books: Book[];
   };
 }
 
